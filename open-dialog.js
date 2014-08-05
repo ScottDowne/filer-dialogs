@@ -33,7 +33,7 @@
     // For now, this string may be ugly, but it's working.
     dialogString =
       '  <div class="file-dialog-header">' +
-      '    <h1 class="file-dialog-title">' + data.title + '</h1>';
+      '    <h1 class="file-dialog-title"></h1>';
     if (data.saveAs) {
       dialogString +=
         '    <div class="file-name-container">' +
@@ -54,11 +54,15 @@
       '    <div class="open-files-container"></div>' +
       '  </div>' +
       '  <div class="file-dialog-footer">' +
-      '    <button class="cancel-button" data-button-id="cancel">' + data.cancel + '</button>' +
-      '    <button class="open-button" data-button-id="done">' + data.done + '</button>' +
+      '    <button class="cancel-button" data-button-id="cancel"></button>' +
+      '    <button class="open-button" data-button-id="done"></button>' +
       '  </div>';
 
     dialog.innerHTML = dialogString;
+
+    dialog.querySelector(".open-button").textContent = data.done;
+    dialog.querySelector(".cancel-button").textContent = data.cancel;
+    dialog.querySelector(".file-dialog-title").textContent = data.title;
 
     return dialogWrapper;
   }
@@ -91,6 +95,7 @@
     var dialog;
     var dialogWrapper;
     var sh;
+    var fs;
     var MakeDrive;
     var onAction = function() {};
 
@@ -124,9 +129,33 @@
         var pathInput = dialog.querySelector(".folder-name");
 
         pathInput.value = sh.pwd();
-        pathInput.addEventListener("input", function() {
+        pathInput.addEventListener("change", function() {
+          var inputValue = pathInput.value.trim();
           // starting work on getting the url bar to trigger changes
-          console.log(pathInput.val());
+          fs.stat(inputValue, function(err, stats) {
+            if (err) {
+              pathInput.value = sh.pwd();
+              return;
+              // kaboom?
+            }
+            var fileName;
+            var filePath;
+            if (stats.type === "DIRECTORY") {
+              displayFilesForDir(inputValue);
+            } else {
+              filePath = inputValue.split("/");
+              fileName = filePath.pop();
+              filePath = filePath.join("/");
+              sh.cd(filePath, function(err) {
+                if (err) {
+                  console.error(err);
+                  return;
+                }
+                workingFiles = [{path:fileName}];
+                onAction();
+              });
+            }
+          });
         });
         files.forEach(function(item, index) {
           var type;
@@ -164,7 +193,7 @@
         MakeDrive = window.MakeDrive;
       }
 
-      var fs = MakeDrive.fs();
+      fs = MakeDrive.fs();
       sh = fs.Shell();
       initialPath = initialPath || "/";
       dialogWrapper = createDialog(data);
