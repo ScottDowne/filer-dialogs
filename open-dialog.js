@@ -129,6 +129,7 @@
         var pathInput = dialog.querySelector(".folder-name");
 
         pathInput.value = sh.pwd();
+        workingFiles = [];
         pathInput.addEventListener("change", function() {
           var inputValue = pathInput.value.trim();
           // starting work on getting the url bar to trigger changes
@@ -210,6 +211,8 @@
       $(window).on('keydown.makedrive-file-dialog', function (event) {
         if (event.keyCode === 27) {
           closeModal();
+        } else if (event.keyCode === 13) {
+          onAction();
         }
       });
 
