@@ -97,6 +97,7 @@
     var sh;
     var fs;
     var MakeDrive;
+    var onSelection = function() {};
     var onAction = function() {};
 
     function onDoubleClick() {
@@ -105,7 +106,7 @@
         displayFilesForDir(workingFile.path);
         return;
       }
-      onAction();
+      onSelection();
     }
 
     function displayFilesForDir(dir) {
@@ -128,14 +129,14 @@
         container.innerHTML = "";
         var pathInput = dialog.querySelector(".folder-name");
 
-        pathInput.value = sh.pwd();
+        pathInput.value = pwd();
         workingFiles = [];
         pathInput.addEventListener("change", function() {
           var inputValue = pathInput.value.trim();
           // starting work on getting the url bar to trigger changes
           fs.stat(inputValue, function(err, stats) {
             if (err) {
-              pathInput.value = sh.pwd();
+              pathInput.value = pwd();
               return;
               // kaboom?
             }
@@ -153,7 +154,7 @@
                   return;
                 }
                 workingFiles = [{path:fileName}];
-                onAction();
+                onSelection();
               });
             }
           });
@@ -161,19 +162,21 @@
         files.forEach(function(item, index) {
           var type;
           if (item.type === "DIRECTORY") {
-            type = "fa-folder-o";
+            type = "fa-folder";
           } else {
             type = "fa-file-code-o";
           }
           var file = createIcon(item.path, type);
-          file.querySelector(".file-icon").addEventListener("mousedown", function() {
+          function onSelect() {
             var selected = container.querySelector(".selected");
             if (selected) {
               selected.classList.remove("selected");
             }
             file.classList.add("selected");
             workingFiles = [item];
-          });
+          }
+          file.querySelector(".file-icon").addEventListener("mousedown", onSelect);
+          file.querySelector(".file-name").addEventListener("mousedown", onSelect);
           file.querySelector(".file-icon").addEventListener("dblclick", onDoubleClick);
           container.appendChild(file);
         });
@@ -219,6 +222,16 @@
       displayFilesForDir(initialPath);
     }
 
+    function pwd() {
+      var pwd = sh.pwd();
+      // sh.pwd() can give / or /dir
+      // we need it to always end in /
+      if (pwd[pwd.length-1] !== "/") {
+        pwd += "/";
+      }
+      return pwd;
+    }
+
     return {
       showSaveAsDialog: function(title, initialPath, defaultName, callback) {
         callback = callback || arguments[arguments.length - 1]; // get last arg for callback
@@ -229,24 +242,31 @@
           saveAs: true
         });
 
-        dialog.querySelector(".open-button[data-button-id='done']").addEventListener("click", function() {
+        onAction = function() {
           var fileName = dialog.querySelector(".file-name-input").value.trim();
           if (!fileName) {
             return;
           }
 
-          callback(null, sh.pwd() + "/" + fileName);
+          callback(null, pwd() + fileName);
           closeModal();
-        });
+        };
+
+        dialog.querySelector(".open-button[data-button-id='done']").addEventListener("click", onAction);
+
+        var nameInput = dialog.querySelector(".file-name-input");
+        nameInput.focus();
+        nameInput.value = defaultName || "";
       },
       showOpenDialog: function(allowMultipleSelection, chooseDirectories, title, initialPath, fileTypes, callback) {
         callback = callback || arguments[arguments.length - 1]; // get last arg for callback
         onAction = function() {
           if (workingFiles.length && (workingFiles[0].type !== "DIRECTORY" || chooseDirectories)) {
-            callback(null, [sh.pwd() + "/" + workingFiles[0].path]);
+            callback(null, [pwd() + workingFiles[0].path]);
             closeModal();
           }
         };
+        onSelection = onAction;
 
         setupDialog(initialPath, {
           title: "Open",
