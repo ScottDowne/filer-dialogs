@@ -221,6 +221,7 @@
 
     return {
       showSaveAsDialog: function(title, initialPath, defaultName, callback) {
+        callback = callback || arguments[arguments.length - 1]; // get last arg for callback
         setupDialog(initialPath, {
           title: "Save As",
           cancel: "Cancel",
@@ -239,6 +240,7 @@
         });
       },
       showOpenDialog: function(allowMultipleSelection, chooseDirectories, title, initialPath, fileTypes, callback) {
+        callback = callback || arguments[arguments.length - 1]; // get last arg for callback
         onAction = function() {
           if (workingFiles.length && (workingFiles[0].type !== "DIRECTORY" || chooseDirectories)) {
             callback(null, [sh.pwd() + "/" + workingFiles[0].path]);
