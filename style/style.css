@@ -138,14 +138,9 @@
 }
 .makedrive-file-dialog .file:hover .file-name div,
 .makedrive-file-dialog .file.selected .file-name div {
-  /*overflow: visible;*/
   word-wrap: break-word;
   white-space: normal;
   color: #000;
-}
-.makedrive-file-dialog .file:hover,
-.makedrive-file-dialog .file.selected {
-  /*width: auto;*/
 }
 .makedrive-file-dialog .file-dialog-body {
   padding: 15px;
