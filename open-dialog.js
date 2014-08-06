@@ -97,6 +97,7 @@
     var sh;
     var fs;
     var MakeDrive;
+    var Path;
     var onSelection = function() {};
     var onAction = function() {};
 
@@ -129,14 +130,14 @@
         container.innerHTML = "";
         var pathInput = dialog.querySelector(".folder-name");
 
-        pathInput.value = pwd();
+        pathInput.value = sh.pwd();
         workingFiles = [];
         pathInput.addEventListener("change", function() {
           var inputValue = pathInput.value.trim();
           // starting work on getting the url bar to trigger changes
           fs.stat(inputValue, function(err, stats) {
             if (err) {
-              pathInput.value = pwd();
+              pathInput.value = sh.pwd();
               return;
               // kaboom?
             }
@@ -145,9 +146,8 @@
             if (stats.type === "DIRECTORY") {
               displayFilesForDir(inputValue);
             } else {
-              filePath = inputValue.split("/");
-              fileName = filePath.pop();
-              filePath = filePath.join("/");
+              filePath = Path.dirname(inputValue);
+              fileName = Path.basename(inputValue);
               sh.cd(filePath, function(err) {
                 if (err) {
                   console.error(err);
@@ -199,6 +199,7 @@
 
       fs = MakeDrive.fs();
       sh = fs.Shell();
+      Path = MakeDrive.Path;
       initialPath = initialPath || "/";
       dialogWrapper = createDialog(data);
       $("body").append(dialogWrapper);
@@ -222,16 +223,6 @@
       displayFilesForDir(initialPath);
     }
 
-    function pwd() {
-      var pwd = sh.pwd();
-      // sh.pwd() can give / or /dir
-      // we need it to always end in /
-      if (pwd[pwd.length-1] !== "/") {
-        pwd += "/";
-      }
-      return pwd;
-    }
-
     return {
       showSaveAsDialog: function(title, initialPath, defaultName, callback) {
         callback = callback || arguments[arguments.length - 1]; // get last arg for callback
@@ -248,7 +239,7 @@
             return;
           }
 
-          callback(null, pwd() + fileName);
+          callback(null, Path.join(sh.pwd(), fileName));
           closeModal();
         };
 
@@ -262,7 +253,7 @@
         callback = callback || arguments[arguments.length - 1]; // get last arg for callback
         onAction = function() {
           if (workingFiles.length && (workingFiles[0].type !== "DIRECTORY" || chooseDirectories)) {
-            callback(null, [pwd() + workingFiles[0].path]);
+            callback(null, [Path.join(sh.pwd(), workingFiles[0].path)]);
             closeModal();
           }
         };
