@@ -96,6 +96,7 @@
     var dialog;
     var dialogWrapper;
     var openMultiples = false;
+    var openDirectories = false;
     var doneButton;
     var sh;
     var fs;
@@ -150,18 +151,27 @@
             type = "fa-file-code-o";
           }
           var file = createIcon(item.path, type);
-          function onSelect() {
-            var selected = container.querySelector(".selected");
+          function onSelect(event) {
+            var selected = container.querySelectorAll(".selected");
             var nameInput = dialog.querySelector(".file-name-input");
             if (nameInput && item.type !== "DIRECTORY") {
               nameInput.value = item.path.trim();
             }
-            if (selected) {
-              selected.classList.remove("selected");
+            // This is out of hand, I need to fix.
+            if (event.shiftKey && openMultiples && (item.type !== "DIRECTORY" || openDirectories) && (!workingFiles[0] || (workingFiles[0].type !== "DIRECTORY" || openDirectories))) {
+              file.classList.add("selected");
+              // Using unshift so we can check the first item and know it's the most recently selected.
+              workingFiles.unshift(item);
+            } else {
+              if (selected.length) {
+                for (var i = 0; i < selected.length; i++) {
+                  selected[i].classList.remove("selected");
+                }
+              }
+              file.classList.add("selected");
+              workingFiles = [item];
             }
-            file.classList.add("selected");
             fileSelected(item);
-            workingFiles = [item];
           }
           file.querySelector(".file-icon").addEventListener("mousedown", onSelect);
           file.querySelector(".file-name").addEventListener("mousedown", onSelect);
@@ -268,11 +278,16 @@
         });
       },
       showOpenDialog: function(allowMultipleSelection, chooseDirectories, title, initialPath, fileTypes, callback) {
+        openDirectories = chooseDirectories;
         openMultiples = allowMultipleSelection;
         callback = callback || arguments[arguments.length - 1]; // get last arg for callback
         onAction = function() {
+          var filesToOpen = [];
           if (workingFiles.length && (workingFiles[0].type !== "DIRECTORY" || chooseDirectories)) {
-            callback(null, [Path.join(sh.pwd(), workingFiles[0].path)]);
+            for (var i = 0; i < workingFiles.length; i++) {
+              filesToOpen.push(Path.join(sh.pwd(), workingFiles[i].path));
+            }
+            callback(null, filesToOpen);
             closeModal();
           }
         };
