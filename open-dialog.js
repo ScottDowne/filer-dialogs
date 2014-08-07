@@ -95,15 +95,20 @@
     var workingFiles = [];
     var dialog;
     var dialogWrapper;
-    var openDirectories = false;
     var openMultiples = false;
     var doneButton;
     var sh;
     var fs;
     var MakeDrive;
     var Path;
+    // This is starting to be a thing.
+    // I think I need a small event system,
+    // or callbacks passed to a ctor.
     var onSelection = function() {};
     var onAction = function() {};
+    var onPathInput = function() {};
+    var onPathChange = function() {};
+    var fileSelected = function() {};
 
     function enableButton(button, enable) {
       if (enable) {
@@ -113,16 +118,6 @@
         button.classList.add("disabled");
         button.disabled = true;
       }
-    }
-
-    function onDoubleClick() {
-      var workingFile = workingFiles[0];
-      enableButton(doneButton, false);
-      if (workingFile.type === "DIRECTORY") {
-        displayFilesForDir(workingFile.path);
-        return;
-      }
-      onSelection();
     }
 
     function displayFilesForDir(dir) {
@@ -147,58 +142,6 @@
 
         pathInput.value = sh.pwd();
         workingFiles = [];
-        pathInput.addEventListener("input", function() {
-          var inputValue = pathInput.value.trim();
-          var selected = container.querySelector(".selected");
-          if (selected) {
-            selected.classList.remove("selected");
-          }
-          workingFile = [];
-          // starting work on getting the url bar to trigger changes
-          fs.stat(inputValue, function(err, stats) {
-            if (err) {
-              enableButton(doneButton, false);
-              return;
-              // kaboom?
-            }
-            var fileName;
-            var filePath;
-            if (stats.type === "DIRECTORY" && !openDirectories) {
-              enableButton(doneButton, false);
-            } else {
-              enableButton(doneButton, true);
-            }
-          });
-        });
-        pathInput.addEventListener("change", function() {
-          var inputValue = pathInput.value.trim();
-          // starting work on getting the url bar to trigger changes
-          fs.stat(inputValue, function(err, stats) {
-            if (err) {
-              pathInput.value = sh.pwd();
-              return;
-              // kaboom?
-            }
-            var fileName;
-            var filePath;
-            if (stats.type === "DIRECTORY" && !openDirectories) {
-              enableButton(doneButton, false);
-              displayFilesForDir(inputValue);
-            } else {
-              enableButton(doneButton, true);
-              filePath = Path.dirname(inputValue);
-              fileName = Path.basename(inputValue);
-              sh.cd(filePath, function(err) {
-                if (err) {
-                  console.error(err);
-                  return;
-                }
-                workingFiles = [{path:fileName}];
-                onSelection();
-              });
-            }
-          });
-        });
         files.forEach(function(item, index) {
           var type;
           if (item.type === "DIRECTORY") {
@@ -209,16 +152,20 @@
           var file = createIcon(item.path, type);
           function onSelect() {
             var selected = container.querySelector(".selected");
+            var nameInput = dialog.querySelector(".file-name-input");
+            if (nameInput && item.type !== "DIRECTORY") {
+              nameInput.value = item.path.trim();
+            }
             if (selected) {
               selected.classList.remove("selected");
             }
             file.classList.add("selected");
-            enableButton(doneButton, item.type !== "DIRECTORY" || openDirectories);
+            fileSelected(item);
             workingFiles = [item];
           }
           file.querySelector(".file-icon").addEventListener("mousedown", onSelect);
           file.querySelector(".file-name").addEventListener("mousedown", onSelect);
-          file.querySelector(".file-icon").addEventListener("dblclick", onDoubleClick);
+          file.querySelector(".file-icon").addEventListener("dblclick", onSelection);
           container.appendChild(file);
         });
       });
@@ -246,7 +193,6 @@
       dialogWrapper = createDialog(data);
       dialog = dialogWrapper.querySelector(".makedrive-file-dialog");
       doneButton = dialog.querySelector(".open-button[data-button-id='done']");
-      enableButton(doneButton, false);
       $("body").append(dialogWrapper);
 
 
@@ -287,14 +233,41 @@
           callback(null, Path.join(sh.pwd(), fileName));
           closeModal();
         };
+        onSelection = function() {
+          var workingFile = workingFiles[0];
+          if (workingFile.type === "DIRECTORY") {
+            displayFilesForDir(workingFile.path);
+          }
+        }
         doneButton.addEventListener("click", onAction);
 
         var nameInput = dialog.querySelector(".file-name-input");
         nameInput.focus();
+        defaultName = defaultName.trim();
+        enableButton(doneButton, defaultName);
         nameInput.value = defaultName || "";
+        nameInput.addEventListener("input", function() {
+          if (nameInput.value.trim()) {
+            enableButton(doneButton, true);
+          } else {
+            enableButton(doneButton, false);
+          }
+        });
+        var pathInput = dialog.querySelector(".folder-name");
+        pathInput.addEventListener("change", function() {
+          var inputValue = pathInput.value.trim();
+          // starting work on getting the url bar to trigger changes
+          fs.stat(inputValue, function(err, stats) {
+            if (err || stats.type !== "DIRECTORY") {
+              pathInput.value = sh.pwd();
+              return;
+              // kaboom?
+            }
+            displayFilesForDir(inputValue);
+          });
+        });
       },
       showOpenDialog: function(allowMultipleSelection, chooseDirectories, title, initialPath, fileTypes, callback) {
-        openDirectories = chooseDirectories;
         openMultiples = allowMultipleSelection;
         callback = callback || arguments[arguments.length - 1]; // get last arg for callback
         onAction = function() {
@@ -303,14 +276,80 @@
             closeModal();
           }
         };
-        onSelection = onAction;
+        onSelection = function() {
+          var workingFile = workingFiles[0];
+          enableButton(doneButton, false);
+          if (workingFile.type === "DIRECTORY") {
+            displayFilesForDir(workingFile.path);
+            return;
+          }
+          onAction();
+        }
+        fileSelected = function(item) {
+          enableButton(doneButton, item.type !== "DIRECTORY" || chooseDirectories);
+        };
 
         setupDialog(initialPath, {
           title: "Open",
           cancel: "Cancel",
           done: "Open"
         });
+        enableButton(doneButton, false);
         doneButton.addEventListener("click", onAction);
+        var pathInput = dialog.querySelector(".folder-name");
+        var container = dialog.querySelector(".open-files-container");
+        pathInput.addEventListener("input", function() {
+          var inputValue = pathInput.value.trim();
+          var selected = container.querySelector(".selected");
+          if (selected) {
+            selected.classList.remove("selected");
+          }
+          workingFile = [];
+          // starting work on getting the url bar to trigger changes
+          fs.stat(inputValue, function(err, stats) {
+            if (err) {
+              enableButton(doneButton, false);
+              return;
+              // kaboom?
+            }
+            var fileName;
+            var filePath;
+            if (stats.type === "DIRECTORY" && !chooseDirectories) {
+              enableButton(doneButton, false);
+            } else {
+              enableButton(doneButton, true);
+            }
+          });
+        });
+        pathInput.addEventListener("change", function() {
+          var inputValue = pathInput.value.trim();
+          // starting work on getting the url bar to trigger changes
+          fs.stat(inputValue, function(err, stats) {
+            if (err) {
+              pathInput.value = sh.pwd();
+              return;
+              // kaboom?
+            }
+            var fileName;
+            var filePath;
+            if (stats.type === "DIRECTORY" && !chooseDirectories) {
+              enableButton(doneButton, false);
+              displayFilesForDir(inputValue);
+            } else {
+              enableButton(doneButton, true);
+              filePath = Path.dirname(inputValue);
+              fileName = Path.basename(inputValue);
+              sh.cd(filePath, function(err) {
+                if (err) {
+                  console.error(err);
+                  return;
+                }
+                workingFiles = [{path:fileName}];
+                onSelection();
+              });
+            }
+          });
+        });
       }
     };
   }
