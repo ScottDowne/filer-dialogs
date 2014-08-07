@@ -51,6 +51,7 @@
       '    </div>' +
       '  </div>' +
       '  <div class="file-dialog-body">' +
+      '    <div class="file-selector-box"></div>' +
       '    <div class="open-files-container"></div>' +
       '  </div>' +
       '  <div class="file-dialog-footer">' +
@@ -94,6 +95,9 @@
     var workingFiles = [];
     var dialog;
     var dialogWrapper;
+    var openDirectories = false;
+    var openMultiples = false;
+    var doneButton;
     var sh;
     var fs;
     var MakeDrive;
@@ -101,8 +105,19 @@
     var onSelection = function() {};
     var onAction = function() {};
 
+    function enableButton(button, enable) {
+      if (enable) {
+        button.classList.remove("disabled");
+        button.disabled = false;
+      } else {
+        button.classList.add("disabled");
+        button.disabled = true;
+      }
+    }
+
     function onDoubleClick() {
       var workingFile = workingFiles[0];
+      enableButton(doneButton, false);
       if (workingFile.type === "DIRECTORY") {
         displayFilesForDir(workingFile.path);
         return;
@@ -132,6 +147,29 @@
 
         pathInput.value = sh.pwd();
         workingFiles = [];
+        pathInput.addEventListener("input", function() {
+          var inputValue = pathInput.value.trim();
+          var selected = container.querySelector(".selected");
+          if (selected) {
+            selected.classList.remove("selected");
+          }
+          workingFile = [];
+          // starting work on getting the url bar to trigger changes
+          fs.stat(inputValue, function(err, stats) {
+            if (err) {
+              enableButton(doneButton, false);
+              return;
+              // kaboom?
+            }
+            var fileName;
+            var filePath;
+            if (stats.type === "DIRECTORY" && !openDirectories) {
+              enableButton(doneButton, false);
+            } else {
+              enableButton(doneButton, true);
+            }
+          });
+        });
         pathInput.addEventListener("change", function() {
           var inputValue = pathInput.value.trim();
           // starting work on getting the url bar to trigger changes
@@ -143,9 +181,11 @@
             }
             var fileName;
             var filePath;
-            if (stats.type === "DIRECTORY") {
+            if (stats.type === "DIRECTORY" && !openDirectories) {
+              enableButton(doneButton, false);
               displayFilesForDir(inputValue);
             } else {
+              enableButton(doneButton, true);
               filePath = Path.dirname(inputValue);
               fileName = Path.basename(inputValue);
               sh.cd(filePath, function(err) {
@@ -173,6 +213,7 @@
               selected.classList.remove("selected");
             }
             file.classList.add("selected");
+            enableButton(doneButton, item.type !== "DIRECTORY" || openDirectories);
             workingFiles = [item];
           }
           file.querySelector(".file-icon").addEventListener("mousedown", onSelect);
@@ -200,11 +241,14 @@
       fs = MakeDrive.fs();
       sh = fs.Shell();
       Path = MakeDrive.Path;
+
       initialPath = initialPath || "/";
       dialogWrapper = createDialog(data);
+      dialog = dialogWrapper.querySelector(".makedrive-file-dialog");
+      doneButton = dialog.querySelector(".open-button[data-button-id='done']");
+      enableButton(doneButton, false);
       $("body").append(dialogWrapper);
 
-      dialog = dialogWrapper.querySelector(".makedrive-file-dialog");
 
       dialog.querySelector(".cancel-button[data-button-id='cancel']").addEventListener("click", closeModal);
 
@@ -214,6 +258,7 @@
 
       $(window).on('keydown.makedrive-file-dialog', function (event) {
         if (event.keyCode === 27) {
+          event.stopPropagation();
           closeModal();
         } else if (event.keyCode === 13) {
           onAction();
@@ -242,14 +287,15 @@
           callback(null, Path.join(sh.pwd(), fileName));
           closeModal();
         };
-
-        dialog.querySelector(".open-button[data-button-id='done']").addEventListener("click", onAction);
+        doneButton.addEventListener("click", onAction);
 
         var nameInput = dialog.querySelector(".file-name-input");
         nameInput.focus();
         nameInput.value = defaultName || "";
       },
       showOpenDialog: function(allowMultipleSelection, chooseDirectories, title, initialPath, fileTypes, callback) {
+        openDirectories = chooseDirectories;
+        openMultiples = allowMultipleSelection;
         callback = callback || arguments[arguments.length - 1]; // get last arg for callback
         onAction = function() {
           if (workingFiles.length && (workingFiles[0].type !== "DIRECTORY" || chooseDirectories)) {
@@ -264,8 +310,7 @@
           cancel: "Cancel",
           done: "Open"
         });
-
-        dialog.querySelector(".open-button[data-button-id='done']").addEventListener("click", onAction);
+        doneButton.addEventListener("click", onAction);
       }
     };
   }
