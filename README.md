@@ -1,4 +1,4 @@
-ope-dialog
+filer-dialogs
 ==========
 
-file open and save as dialogs for makedrive
+open and save as file dialogs

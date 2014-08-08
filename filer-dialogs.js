@@ -2,12 +2,12 @@
 (function(root, factory) {
   if (typeof define === 'function' && define.amd) {
     define(function() {
-      return (root.openDialog = factory());
+      return (root.filerDialogs = factory());
     });
   } else if (typeof exports === 'object') {
     module.exports = factory();
   } else {
-    root.openDialog = factory();
+    root.filerDialogs = factory();
   }
 }(this, function() {
 
