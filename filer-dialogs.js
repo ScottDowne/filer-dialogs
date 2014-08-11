@@ -319,7 +319,7 @@
           if (selected) {
             selected.classList.remove("selected");
           }
-          workingFile = [];
+          workingFiles = [];
           // starting work on getting the url bar to trigger changes
           fs.stat(inputValue, function(err, stats) {
             if (err) {
