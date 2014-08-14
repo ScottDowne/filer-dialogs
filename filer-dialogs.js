@@ -228,7 +228,7 @@
       showSaveAsDialog: function(title, initialPath, defaultName, callback) {
         callback = callback || arguments[arguments.length - 1]; // get last arg for callback
         setupDialog(initialPath, {
-          title: "Save As",
+          title: title,
           cancel: "Cancel",
           done: "Save",
           saveAs: true
@@ -305,7 +305,7 @@
         };
 
         setupDialog(initialPath, {
-          title: "Open",
+          title: title,
           cancel: "Cancel",
           done: "Open"
         });
