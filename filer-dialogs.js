@@ -182,8 +182,17 @@
     }
 
     function closeModal() {
+      window.removeEventListener("keydown", onKeyDown, true);
       if(dialogWrapper && dialogWrapper.parentNode) {
         dialogWrapper.parentNode.removeChild(dialogWrapper);
+      }
+    }
+
+    function onKeyDown(event) {
+      if (event.keyCode === 27) {
+        closeModal();
+      } else if (event.keyCode === 13) {
+        onAction();
       }
     }
 
@@ -212,14 +221,7 @@
         displayFilesForDir("../");
       });
 
-      $(window).on('keydown.makedrive-file-dialog', function (event) {
-        if (event.keyCode === 27) {
-          event.stopPropagation();
-          closeModal();
-        } else if (event.keyCode === 13) {
-          onAction();
-        }
-      });
+      window.addEventListener("keydown", onKeyDown, true);
 
       displayFilesForDir(initialPath);
     }
