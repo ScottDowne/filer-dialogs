@@ -285,7 +285,11 @@
         callback = callback || arguments[arguments.length - 1]; // get last arg for callback
         onAction = function() {
           var filesToOpen = [];
-          if (workingFiles.length && (workingFiles[0].type !== "DIRECTORY" || chooseDirectories)) {
+          var isDirectory = workingFiles[0].type === "DIRECTORY";
+          if (!workingFiles || !workingFiles.length) {
+            return;
+          }
+          if ((isDirectory && chooseDirectories) || (!isDirectory && !chooseDirectories)) {
             for (var i = 0; i < workingFiles.length; i++) {
               filesToOpen.push(Path.join(sh.pwd(), workingFiles[i].path));
             }
@@ -303,7 +307,11 @@
           onAction();
         }
         fileSelected = function(item) {
-          enableButton(doneButton, item.type !== "DIRECTORY" || chooseDirectories);
+          if (chooseDirectories) {
+            enableButton(doneButton, item.type === "DIRECTORY");
+          } else {
+            enableButton(doneButton, item.type !== "DIRECTORY");
+          }
         };
 
         setupDialog(initialPath, {
@@ -331,10 +339,10 @@
             }
             var fileName;
             var filePath;
-            if (stats.type === "DIRECTORY" && !chooseDirectories) {
-              enableButton(doneButton, false);
+            if (chooseDirectories) {
+              enableButton(doneButton, stats.type === "DIRECTORY");
             } else {
-              enableButton(doneButton, true);
+              enableButton(doneButton, stats.type !== "DIRECTORY");
             }
           });
         });
@@ -349,10 +357,8 @@
             }
             var fileName;
             var filePath;
-            if (stats.type === "DIRECTORY" && !chooseDirectories) {
-              enableButton(doneButton, false);
-              displayFilesForDir(inputValue);
-            } else {
+
+            if ((stats.type === "DIRECTORY" && chooseDirectories) || (stats.type !== "DIRECTORY" && !chooseDirectories)) {
               enableButton(doneButton, true);
               filePath = Path.dirname(inputValue);
               fileName = Path.basename(inputValue);
@@ -364,6 +370,11 @@
                 workingFiles = [{path:fileName}];
                 onSelection();
               });
+            } else {
+              enableButton(doneButton, false);
+              if (stats.type === "DIRECTORY") {
+                displayFilesForDir(inputValue);
+              }
             }
           });
         });
