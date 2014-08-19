@@ -163,11 +163,11 @@
             } else if ((isDirectory && openDirectories) || (!isDirectory && !openDirectories)) {
               pathInput.value = Path.join(sh.pwd(), item.path.trim());
             } else {
-              pathInput.value = Path.join(sh.pwd(), "");
+              pathInput.value = sh.pwd();
             }
             // This is out of hand, I need to fix.
             if (isOpenMultiples && (!isDirectory || openDirectories) && (!dirAlreadySelected || openDirectories)) {
-              pathInput.value = Path.join(sh.pwd(), "");
+              pathInput.value = sh.pwd();
               file.classList.add("selected");
               // Using unshift so we can check the first item
               // and know it's the most recently selected.
@@ -300,7 +300,7 @@
             return;
           }
           if (!workingFiles.length && openDirectories) {
-            filesToOpen.push(Path.join(sh.pwd(), ""));
+            filesToOpen.push(sh.pwd());
             isDirectory = true;
           } else if (!workingFiles.length) {
             return;
