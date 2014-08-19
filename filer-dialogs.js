@@ -154,13 +154,23 @@
           function onSelect(event) {
             var selected = container.querySelectorAll(".selected");
             var nameInput = dialog.querySelector(".file-name-input");
-            if (nameInput && item.type !== "DIRECTORY") {
+            var pathInput = dialog.querySelector(".folder-name");
+            var isDirectory = item.type === "DIRECTORY";
+            var isOpenMultiples = openMultiples && event.shiftKey;
+            var dirAlreadySelected = workingFiles[0] && workingFiles[0].type === "DIRECTORY";
+            if (nameInput) {
               nameInput.value = item.path.trim();
+            } else if ((isDirectory && openDirectories) || (!isDirectory && !openDirectories)) {
+              pathInput.value = Path.join(sh.pwd(), item.path.trim());
+            } else {
+              pathInput.value = sh.pwd();
             }
             // This is out of hand, I need to fix.
-            if (event.shiftKey && openMultiples && (item.type !== "DIRECTORY" || openDirectories) && (!workingFiles[0] || (workingFiles[0].type !== "DIRECTORY" || openDirectories))) {
+            if (isOpenMultiples && (!isDirectory || openDirectories) && (!dirAlreadySelected || openDirectories)) {
+              pathInput.value = sh.pwd();
               file.classList.add("selected");
-              // Using unshift so we can check the first item and know it's the most recently selected.
+              // Using unshift so we can check the first item
+              // and know it's the most recently selected.
               workingFiles.unshift(item);
             } else {
               if (selected.length) {
@@ -285,11 +295,19 @@
         callback = callback || arguments[arguments.length - 1]; // get last arg for callback
         onAction = function() {
           var filesToOpen = [];
-          var isDirectory = workingFiles[0].type === "DIRECTORY";
-          if (!workingFiles || !workingFiles.length) {
+          var isDirectory;
+          if (!workingFiles) {
             return;
           }
-          if ((isDirectory && chooseDirectories) || (!isDirectory && !chooseDirectories)) {
+          if (!workingFiles.length && openDirectories) {
+            filesToOpen.push(sh.pwd());
+            isDirectory = true;
+          } else if (!workingFiles.length) {
+            return;
+          } else {
+            isDirectory = workingFiles[0].type === "DIRECTORY";
+          }
+          if ((isDirectory && openDirectories) || (!isDirectory && !openDirectories)) {
             for (var i = 0; i < workingFiles.length; i++) {
               filesToOpen.push(Path.join(sh.pwd(), workingFiles[i].path));
             }
@@ -299,7 +317,7 @@
         };
         onSelection = function() {
           var workingFile = workingFiles[0];
-          enableButton(doneButton, false);
+          enableButton(doneButton, openDirectories);
           if (workingFile.type === "DIRECTORY") {
             displayFilesForDir(workingFile.path);
             return;
@@ -307,7 +325,7 @@
           onAction();
         }
         fileSelected = function(item) {
-          if (chooseDirectories) {
+          if (openDirectories) {
             enableButton(doneButton, item.type === "DIRECTORY");
           } else {
             enableButton(doneButton, item.type !== "DIRECTORY");
@@ -319,7 +337,7 @@
           cancel: "Cancel",
           done: "Open"
         });
-        enableButton(doneButton, false);
+        enableButton(doneButton, openDirectories);
         doneButton.addEventListener("click", onAction);
         var pathInput = dialog.querySelector(".folder-name");
         var container = dialog.querySelector(".open-files-container");
@@ -339,7 +357,7 @@
             }
             var fileName;
             var filePath;
-            if (chooseDirectories) {
+            if (openDirectories) {
               enableButton(doneButton, stats.type === "DIRECTORY");
             } else {
               enableButton(doneButton, stats.type !== "DIRECTORY");
@@ -358,7 +376,7 @@
             var fileName;
             var filePath;
 
-            if ((stats.type === "DIRECTORY" && chooseDirectories) || (stats.type !== "DIRECTORY" && !chooseDirectories)) {
+            if ((stats.type === "DIRECTORY" && openDirectories) || (stats.type !== "DIRECTORY" && !openDirectories)) {
               enableButton(doneButton, true);
               filePath = Path.dirname(inputValue);
               fileName = Path.basename(inputValue);
